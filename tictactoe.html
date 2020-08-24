@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            .gameboard {
+                width: 300px;
+                height: 600px;
+            }
+            .slot {
+                width: 100px;
+                height: 100px;
+                outline: 1px solid;
+                float: left;
+            }
+            </style>
+            <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
+            <script>
+                var player = true;
+                var board = [
+                    ['', '', ''],
+                    ['', '', ''],
+                    ['', '', ''],
+                ]
+                
+                function allEqual(arr) {
+                    const base = arr[0]
+                    return base && arr.every((x) => x === base);
+                }
+
+                function getCoords(coords) {
+                    return coords.map(([x, y]) => board[x][y]);
+                }
+
+                function check(x, y){
+                    const row = board[x];
+                    const col = board.map(e => e[y]);
+                    const diag1 = getCoords([[0, 0], [1, 1], [2, 2]]);
+                    const diag2 = getCoords([[0, 2], [1, 1], [2, 0]]);
+                    const winningVectors = [row, col, diag1, diag2];
+                    if(winningVectors.some(allEqual)) {
+                        document.getElementById("winner").innerHTML = "winner is ! Player " + ((player) ? "1" : "2");
+                    }
+                }
+                $(function() {
+                    $('.slot').click(function(e) {
+                        const x = e.target.dataset.x;
+                        const y = e.target.dataset.y;
+                        if(!e.target.innerHTML) {
+                            const move = player ? 'X' : 'O';
+                            e.target.innerHTML = move;
+                            board[x][y] = move;
+                            check(x,y);
+                            player = !player;
+                        }
+                    })
+                })
+            </script>
+    </head>
+    <body>
+        <div></div>
+        <div id="winner"></div>
+        <div class="gameboard">
+            <div data-y="0" data-x="0" class="slot"></div>
+            <div data-y="0" data-x="1" class="slot"></div>
+            <div data-y="0" data-x="2" class="slot"></div>
+
+            <div data-y="1" data-x="0" class="slot"></div>
+            <div data-y="1" data-x="1" class="slot"></div>
+            <div data-y="1" data-x="2" class="slot"></div>
+
+            <div data-y="2" data-x="0" class="slot"></div>
+            <div data-y="2" data-x="1" class="slot"></div>
+            <div data-y="2" data-x="2" class="slot"></div>
+        </div>
+    </body>
+</html>

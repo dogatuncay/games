@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            .button {
+                margin-bottom: 10px;
+            }
+
+            .gameboard {
+                width: 800px;
+                height: 16000px;
+                margin: 0 auto;
+            }
+            .slot {
+                width: 100px;
+                height: 100px;
+                outline: 1px solid;
+                float: left;
+                background-color: gray;
+            }
+            .slot > .piece {
+                display: none;
+                border-radius: 100%;
+                width: 90%;
+                height: 90%;
+                margin: 4%;
+            }
+            .slot.filled > .piece {
+                display: inherit;
+            }
+            .slot.black > .piece {
+                background-color: black;
+            }
+            .slot.white > .piece {
+                background-color: white;
+            }
+
+            </style>
+            <script src="https://code.jquery.com/jquery-3.5.0.min.js" integrity="sha256-xNzN2a4ltkB44Mc/Jz3pT4iU1cmeR0FkXs4pru/JxaQ=" crossorigin="anonymous"></script>
+            <script>
+                function flatIndex(x,y) {
+                    return y*8 + x;
+                }
+
+                function makeArray(n, f) {
+                    var arr = new Array(n);
+                    for(var i = 0; i < n; i++) {
+                        arr[i] = f();
+                    }
+                    return arr;
+                }
+
+                function buildBoard() {
+                    var board = $("<div/>", { class: "gameboard" });
+                    for(var i = 0; i<8; i++) {
+                        for(var j=0; j<8; j++) {
+                            var initial_class = "slot";
+                            var element = $("<div/>", { "data-x": j, "data-y": i, class: initial_class });
+                            element.append($("<div/>", { class: "piece" }))
+                            board.append(element)
+                        }
+                    }
+                    document.body.appendChild(board[0]);
+                    return board;
+                }
+
+                Array.prototype.get = function(i) {
+                    return this[i];
+                }
+                Array.prototype.set = function(i, val) {
+                    this[i] = val;
+                }
+                Array.prototype.filterMap = function(f) {
+                    const newArray = [];
+                    for(let i = 0; i < this.length; i++) {
+                        let x = f(this[i]);
+                        if(x) newArray.push(x);
+                    }
+                    return newArray;
+                }
+
+                /* SLICE */
+                function Slice(array, length, f) {
+                    this.length = length;
+                    this.array = array;
+                    this.f = f;
+                }
+
+                Slice.prototype.get = function(i) {
+                    if (i >= this.length) {
+                        throw new Error('index out of bounds');
+                    } else {
+                        var index = this.f(i);
+                        return this.array.get(index);
+                    }
+                }
+
+                Slice.prototype.set = function(i, val) {
+                    if (i >= this.length) {
+                        throw new Error('index out of bounds');
+                    } else {
+                        var index = this.f(i);
+                        this.array.set(index, val);
+                    }
+                }
+
+                function subSlice(base, offset, length) {
+                    return new Slice(base, length, (i) => offset + i);
+                }
+
+                /* BOARD */
+                function Board() {
+                    this.width = 8;
+                    this.height = 8;
+                    this.gameboard = buildBoard();
+                    this.availableSlots = this.width * this.height;
+                    this.array = makeArray(this.availableSlots, () => '-');
+                    this.set(flatIndex(3,3), true);
+                    this.set(flatIndex(3,4), false);
+                    this.set(flatIndex(4,3), false);
+                    this.set(flatIndex(4,4), true);
+                }
+
+                Board.prototype.get = function(i) {
+                    return this.array[i];
+                }
+
+                Board.prototype.set = function(i, val) {
+                    if(this.array[i] === '-') {
+                        this.availableSlots--;
+                    }
+                    this.array[i] = val;
+                    const move = val ? 'black' : 'white';
+                    const slot = this.gameboard.children()[i];
+                    if(!slot.classList.contains('filled')) {
+                        slot.classList.add('filled');
+                    }
+                    slot.classList.remove("black");
+                    slot.classList.remove("white");
+                    slot.classList.add(move);
+                }
+
+                Board.prototype.isFilled = function(i) {
+                    return this.array[i] !== '-';
+                }
+
+                Board.prototype.getRow = function(x, y) {
+                    return {
+                        slice: new Slice(this, 8, (i) => flatIndex(i,y)),
+                        index: x
+                    };
+                }
+
+                Board.prototype.getColumn = function(x, y) {
+                    return {
+                        slice: new Slice(this, 8, (i) => flatIndex(x,i)),
+                        index: y
+                    };
+                }
+
+                Board.prototype.getRightDiagonal = function(x, y) {
+                    const topRightCoord = this.topRight(x, y);
+                    return {
+                        slice: new Slice(this, topRightCoord.length, (i) => flatIndex(topRightCoord.x-i,topRightCoord.y+i)),
+                        index: Math.abs(topRightCoord.x - x)
+                    };
+                }
+
+                Board.prototype.getLeftDiagonal = function(x, y) {
+                    const topLeftCoord = this.topLeft(x, y);
+                    return {
+                        slice: new Slice(this, topLeftCoord.length, (i) => flatIndex(topLeftCoord.x+i, topLeftCoord.y+i)),
+                        index:  Math.abs(topLeftCoord.x - x)
+                    };
+                }
+                Board.prototype.topLeft = function(x, y) {
+                    const topX = (x-Math.min(x,y));
+                    const topY = (y-Math.min(x,y));
+                    return {
+                        x: topX, 
+                        y: topY,
+                        length: this.width - Math.max(topX, topY)
+                    };
+                }
+
+                Board.prototype.topRight = function(x, y) {
+                    const xInv = this.width - 1 - x;
+                    const topX = (x+Math.min(xInv,y));
+                    const topY = (y-Math.min(xInv,y));
+                    return {
+                        x: topX,
+                        y: topY,
+                        length: Math.max(topX, topY) - Math.min(topX, topY) + 1
+                    };
+                }
+
+                Board.prototype.findWinner = function(){
+                    var blackCount = 0;
+                    var whiteCount = 0;
+
+                    for(var i = 0; i < this.array.length; ++i){
+                        this.board.array[i] ? blackCount++ : whiteCount++;
+                    }
+                    
+                    var winner_str;
+                    if(whiteCount == blackCount){
+                        winner_str = "It is a tie! ";
+                    }
+                    else if(whiteCount > blackCount){
+                        winner_str = "The winner is White! ";
+                    }
+                    else {
+                        winner_str = "The winner is Black! ";
+                    }
+
+                    winner_str += " White tokens: " + whiteCount;
+                    winner_str += " Black tokens: " + blackCount;
+                    document.getElementById("player").innerHTML = winner_str ;
+
+                }
+
+                function findReplacementSlice(slice, piecePlacementIndex, player, dir) {
+                    const startIndex = piecePlacementIndex + dir;
+                    const endIndex = dir > 0 ? slice.length-1 : 0;
+                    
+                    for(var i = startIndex; i !== endIndex + dir; i += dir) {
+                        if(slice.get(i) === '-') return false;
+                        if(slice.get(i) === player && i !== startIndex) {
+                            const offset = Math.min(startIndex, i-dir);
+                            const length = Math.max(startIndex, i-dir) - offset + 1;
+                            return subSlice(slice, offset, length);
+                        } else if(slice.get(i) === player) {
+                            return false;
+                        }
+                    }
+                    return false; 
+                }
+
+                function Game() {
+                    this.currentPlayer = true;
+                    this.board = new Board();
+                }
+                Game.prototype.swapPlayer = function(alreadySwapped) {
+                    this.currentPlayer = !this.currentPlayer;
+                    document.getElementById("player").innerHTML = "Player: " + (this.currentPlayer ? "Black" : "White");
+                    if(!this.canMakeMove()) {
+                        if(alreadySwapped) throw new Error('THIS SHOULD NOT HAPPEN');
+                        document.getElementById("error").innerHTML = "Can't make move";
+                        this.swapPlayer(true);
+                    }
+                };
+                Game.prototype.canMakeMove = function() {
+                    return this.board.array.some((slot, index) => {
+                        if(slot === '-'){
+                            const x = index % 8;
+                            const y = Math.floor(index/8);
+                            if(this.findMove(x, y).length > 0){
+                                return true;
+                            }
+                        }
+                    })
+                };
+                Game.prototype.makeMove = function(x, y) {
+                    const slices = this.findMove(x, y);
+                        if(slices.length>0) {
+                            slices.forEach((slice) => this.setMove(slice));
+                            return true;
+                        }
+                        return false;
+                };
+
+                Game.prototype.setMove = function (slice) {
+                    for(var i=0; i < slice.length; i++)
+                        slice.set(i, this.currentPlayer);
+                }
+
+                Game.prototype.tryMove = function(x, y) {
+                    const boardIndex = flatIndex(x,y);
+                    if(!this.board.isFilled(boardIndex)) {
+                        if(this.makeMove(x,y)) {
+                            this.board.set(boardIndex, this.currentPlayer);
+                            this.swapPlayer();
+                            document.getElementById("error").innerHTML = " ";
+                        }
+                        else {
+                            document.getElementById("error").innerHTML = "illegal move";
+                        }
+
+                    }
+                    if(this.availableSlots===0){
+                        this.board.findWinner();
+                    }
+                };
+
+                Game.prototype.findMove = function(x, y){
+                    const row = this.board.getRow(x, y);
+                    const column = this.board.getColumn(x, y);
+                    const right_diagonal = this.board.getRightDiagonal(x, y);
+                    const left_diagonal = this.board.getLeftDiagonal(x, y);
+
+                    const dimensions = [row, column, left_diagonal, right_diagonal];
+                    const directions = [1, -1];
+
+                    return dimensions.flatMap((dim) =>
+                        directions.filterMap((dir) =>
+                            findReplacementSlice(dim.slice, dim.index, this.currentPlayer, dir)
+                        )
+                    );
+                }
+
+                $(function() {
+                    var game = new Game()
+                    $('.slot').click(function(e) {
+                        const x = parseInt(e.target.dataset.x);
+                        const y = parseInt(e.target.dataset.y);
+                        game.tryMove(x, y);
+                    })
+                })
+            </script>
+    </head>
+    <body>
+        <button type="button" id="reset" class="button" onClick="window.location.reload();">Reset Game</button>
+        <div id="player">Black player starts first</div>
+        <div id="error"></div>
+    </body>
+</html>
