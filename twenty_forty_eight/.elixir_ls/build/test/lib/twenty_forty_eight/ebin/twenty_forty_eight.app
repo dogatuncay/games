@@ -1,0 +1,9 @@
+{application,twenty_forty_eight,
+             [{applications,[kernel,stdlib,elixir,logger]},
+              {description,"twenty_forty_eight"},
+              {modules,['Elixir.TwentyFortyEight',
+                        'Elixir.TwentyFortyEight.Board',
+                        'Elixir.TwentyFortyEight.ConsoleInterface',
+                        'Elixir.TwentyFortyEight.Game']},
+              {registered,[]},
+              {vsn,"0.1.0"}]}.
